@@ -1,5 +1,4 @@
 __author__ = 'jiacheng'
-# !/usr/bin/env python3
 # -*- coding: utf-8 -*
 from urllib import request
 import urllib.parse
@@ -9,7 +8,7 @@ import re
 from datetime import datetime
 import _thread as thread, queue,time
 
-stdoutmutex = thread.allocate_lock()
+stdoutmutex = thread.allocate_lock()  # set about consumer & producers
 numconsumers = 5
 numproducers = 4
 
@@ -18,32 +17,32 @@ class Search(object):
 
     def __init__(self, username, password):
         self.__list = []
-        self.__api = PixivAPI()
+        self.__api = PixivAPI()  # enter account & password
         self.__api.login(username, password)
-        self.mulu = os.path.join(os.path.abspath('.'), self.nows())
+        self.mulu = os.path.join(os.path.abspath('.'), self.nows())  # set a path to save pic
         if not [x for x in os.listdir('.') if os.path.isdir(x)].count(self.nows()):
             os.mkdir(self.mulu)
 
     def search_id(self, num=10):
         Q =self.__api.ranking_all(page=1)
-        lens = len(Q["response"][0]['works'])
+        lens = len(Q["response"][0]['works']) # list about works
         if lens < num:
             num = lens
         j = 0
         while num > 0:
             j += 1
-            if Q["response"][0]['works'][j]["previous_rank"] == 0:
-                self.__list.append(Q["response"][0]['works'][j]['work']['id'])
+            if Q["response"][0]['works'][j]["previous_rank"] == 0:  # list about yesterday rank
+                self.__list.append(Q["response"][0]['works'][j]['work']['id'])  # list about id
                 num -= 1
         return self.__list
 
     def find_url(self, id):
         urls = []
         l = JsonDict(self.__api.works(id))
-        if l.response[0]['metadata']==None:
+        if l.response[0]['metadata']==None:   # one pic
             url = l.response[0]['image_urls']['large']
             urls.append(url)
-        else:
+        else:  # album
             for i in range(0, len(l.response[0]['metadata']['pages'])):
                 url = l.response[0]['metadata']['pages'][i]["image_urls"]["large"]
                 urls.append(url)
@@ -69,6 +68,7 @@ class Search(object):
         except urllib.error.HTTPError as e:
             print("error:%s" %e)
 
+# following is about multithreading I will rewrite it
 
     def nows(self):
         now = str(datetime.now())

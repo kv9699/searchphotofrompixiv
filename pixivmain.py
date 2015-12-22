@@ -1,22 +1,17 @@
 __author__ = 'jiacheng'
 # -*- coding: utf-8 -*
-from urllib import request
+from urllib import request, error
 import urllib.parse
-from pixivpy3api import PixivAPI
-import os
+from pixivpy3api import *
+import os, time, random
 import re
 from datetime import datetime
-import _thread as thread, queue,time
-
-stdoutmutex = thread.allocate_lock()  # set about consumer & producers
-numconsumers = 5
-numproducers = 4
+from multiprocessing import Pool
 
 
 class Search(object):
 
     def __init__(self, username, password):
-        self.__list = []
         self.__api = PixivAPI()  # enter account & password
         self.__api.login(username, password)
         self.mulu = os.path.join(os.path.abspath('.'), self.nows())  # set a path to save pic
@@ -24,17 +19,29 @@ class Search(object):
             os.mkdir(self.mulu)
 
     def search_id(self, num=10):
+        id_list = []
         Q =self.__api.ranking_all(page=1)
-        lens = len(Q["response"][0]['works']) # list about works
+        lens = len(Q["response"][0]['works'])  # list about works
         if lens < num:
             num = lens
         j = 0
         while num > 0:
             j += 1
             if Q["response"][0]['works'][j]["previous_rank"] == 0:  # list about yesterday rank
-                self.__list.append(Q["response"][0]['works'][j]['work']['id'])  # list about id
+                id_list.append(Q["response"][0]['works'][j]['work']['id'])  # list about id
                 num -= 1
-        return self.__list
+        return id_list
+
+    def down_load_list(self, id=None):
+        list = []
+        if id == None:
+            for i in self.search_id():
+                for j in self.find_url(i):
+                    list.append(j)
+        else:
+            for j in self.find_url(id):
+                list.append(j)
+        return list
 
     def find_url(self, id):
         urls = []
@@ -68,8 +75,6 @@ class Search(object):
         except urllib.error.HTTPError as e:
             print("error:%s" %e)
 
-# following is about multithreading I will rewrite it
-
     def nows(self):
         now = str(datetime.now())
         time = r'(\d+)(\-)(\d+)(\-)(\d+)'
@@ -89,50 +94,17 @@ class Search(object):
             print("failed")
         return iid, fwq, p0, hz
 
-dataQueue = queue.Queue()
-
-def runss(username, password, id = None):
-    k = Search(username, password)
-    list = []
-    if id == None :
-        for i in k.search_id():
-            for j in k.find_url(i):
-                list.append(j)
-    else:
-        for j in k.find_url(id):
-            list.append(j)
-    global th_time
-    th_time = len(list)
-    thread.start_new_thread(producer, (list,))
-    for i in range(numconsumers):
-        thread.start_new_thread(consumer, (k,))
-    while True:
-        if th_time == 0:
-            break
-    time.sleep(5)
-    return True
-
-def producer(list):
-    for url in list:
-        dataQueue.put(url)
-
-def consumer(k):
-    global th_time
-    while True:
-        try:
-            url = dataQueue.get(block=False)
-        except queue.Empty:
-            pass
-        else:
-            stdoutmutex.acquire()
-            th_time -= 1
-            stdoutmutex.release()
-            k.downloads(url)
+    def download(self, id=None):
+        list = self.down_load_list(id=id)
+        prc = Pool(10)
+        for i in range(len(list)):
+            url = list[i]
+            prc.apply_async(self.downloads, args=(url,))
+        prc.close()
+        prc.join()
 
 
-#k = Search('**', "**")
-#urls = k.find_url(53843671)
-#for url in urls:
-    #k.downloads(url)
-runss('kv9699@sina.com', "kv9699", id=54080761)
-input('1111')
+username = input("username:  ")
+passworld = input('passworld:   ')
+k = Search(username, passworld)
+k.download(id=54126575)

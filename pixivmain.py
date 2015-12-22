@@ -2,7 +2,7 @@ __author__ = 'jiacheng'
 # -*- coding: utf-8 -*
 from urllib import request
 import urllib.parse
-from pixivpy3api import *
+from pixivpy3api import PixivAPI
 import os
 import re
 from datetime import datetime
@@ -91,11 +91,15 @@ class Search(object):
 
 dataQueue = queue.Queue()
 
-def runss(username, password):
+def runss(username, password, id = None):
     k = Search(username, password)
     list = []
-    for i in k.search_id():
-        for j in k.find_url(i):
+    if id == None :
+        for i in k.search_id():
+            for j in k.find_url(i):
+                list.append(j)
+    else:
+        for j in k.find_url(id):
             list.append(j)
     global th_time
     th_time = len(list)
@@ -125,8 +129,10 @@ def consumer(k):
             stdoutmutex.release()
             k.downloads(url)
 
-if __name__ == '__main__':
-    k = Search('1111', "11111")
-    urls = k.find_url(53273389)
-    for url in urls:
-        k.downloads(url)
+
+#k = Search('**', "**")
+#urls = k.find_url(53843671)
+#for url in urls:
+    #k.downloads(url)
+runss('kv9699@sina.com', "kv9699", id=54080761)
+input('1111')
